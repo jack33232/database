@@ -578,12 +578,18 @@ class Connection implements ConnectionInterface
         ++$this->transactions;
 
         if ($this->transactions == 1) {
+            $this->reconnectIfMissingConnection();
             try {
                 $this->getPdo()->beginTransaction();
             } catch (Exception $e) {
                 --$this->transactions;
-
-                throw $e;
+                if ($this->causedByLostConnection($e)) {
+                    $this->reconnect();
+                    $this->getPdo()->beginTransaction();
+                    ++$this->transactions;
+                } else {
+                    throw $e;
+                }
             }
         } elseif ($this->transactions > 1 && $this->queryGrammar->supportsSavepoints()) {
             $this->getPdo()->exec(
@@ -1189,7 +1195,11 @@ class Connection implements ConnectionInterface
      */
     public function enableQueryLog()
     {
-        $this->loggingQueries = true;
+        $sapi_type = php_sapi_name();
+        if (substr($sapi_type, 0, 3) !== 'cli') {
+            // Disable query log on cli mode, never open it otherwise hell comes
+            $this->loggingQueries = true;
+        }
     }
 
     /**
