@@ -16,6 +16,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Query\Grammars\Grammar;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Processors\Processor;
+use PDO;
 
 class Builder
 {
@@ -1999,7 +2000,16 @@ class Builder
 
         $this->bindings['select'] = [];
 
+        $connection = $this->getConnection();
+        $fetch_mode_bkp = $connection->getFetchMode();
+        $fetch_argument_bkp = $connection->getFetchArgument();
+        $fetch_constructor_argument_bkp = $connection->getFetchConstructorArgument();
+        
+        $connection->setFetchMode(PDO::FETCH_ASSOC, $fetch_argument_bkp, $fetch_constructor_argument_bkp);
+
         $results = $this->get($columns);
+
+        $connection->setFetchMode($fetch_mode_bkp, $fetch_argument_bkp, $fetch_constructor_argument_bkp);
 
         // Once we have executed the query, we will reset the aggregate property so
         // that more select queries can be executed against the database without
@@ -2011,7 +2021,7 @@ class Builder
         $this->bindings['select'] = $previousSelectBindings;
 
         if (isset($results[0])) {
-            return array_change_key_case((array) $results[0])['aggregate'];
+            return array_change_key_case($results[0])['aggregate'];
         }
     }
 
