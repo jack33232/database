@@ -1,6 +1,6 @@
 {
-    "name": "illuminate/database",
-    "description": "The Illuminate Database package.",
+    "name": "jack33232/database",
+    "description": "The Illuminate Database package forked by jack33232 & fixed some bugs.",
     "license": "MIT",
     "homepage": "https://laravel.com",
     "support": {

@@ -322,7 +322,19 @@ class Connection implements ConnectionInterface
 
             $statement->execute();
 
-            return $statement->fetchAll();
+
+            if ($fetchMode === PDO::FETCH_CLASS && ! isset($fetchArgument)) {
+                $fetchArgument = 'StdClass';
+                $fetchConstructorArgument = null;
+            }
+
+            if (isset($fetchArgument)) {
+                return ($fetchMode === ($fetchMode | PDO::FETCH_COLUMN) || $fetchMode === ($fetchMode | PDO::FETCH_INFO))
+                    ? $statement->fetchAll($fetchMode, $fetchArgument)
+                    : $statement->fetchAll($fetchMode, $fetchArgument, $fetchConstructorArgument);
+            } else {
+                return $statement->fetchAll($fetchMode);
+            }
         });
     }
 
@@ -347,9 +359,18 @@ class Connection implements ConnectionInterface
             $statement = $this->prepared($this->getPdoForSelect($useReadPdo)
                               ->prepare($query));
 
+
             $this->bindValues(
                 $statement, $this->prepareBindings($bindings)
             );
+
+            if (isset($fetchArgument)) {
+                ($fetchMode === ($fetchMode | PDO::FETCH_COLUMN) || $fetchMode === ($fetchMode | PDO::FETCH_INFO))
+                    ? $statement->setFetchMode($fetchMode, $fetchArgument)
+                    : $statement->setFetchMode($fetchMode, $fetchArgument, $fetchConstructorArgument);
+            } else {
+                $statement->setFetchMode($fetchMode);
+            }
 
             // Next, we'll execute the query against the database and return the statement
             // so we can return the cursor. The cursor will use a PHP generator to give
@@ -1096,7 +1117,11 @@ class Connection implements ConnectionInterface
      */
     public function enableQueryLog()
     {
-        $this->loggingQueries = true;
+        $sapi_type = php_sapi_name();
+        if (substr($sapi_type, 0, 3) !== 'cli') {
+            // Disable query log on cli mode, never open it otherwise hell comes
+            $this->loggingQueries = true;
+        }
     }
 
     /**
